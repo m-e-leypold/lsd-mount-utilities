@@ -41,7 +41,7 @@ let uid         = Unix.getuid ();;
 let user        = (Unix.getpwuid uid).Unix.pw_name;;
 
 let options     = parse_mount_options mount_options
-and loop_device = loprobe volume_container
+and loop_device = Loop.probe volume_container
 in 
   try 
     option_table_add options "loopdev" loop_device;
@@ -55,18 +55,18 @@ in
       option_table_add options "dmdev" mapper_device;
 
       try 
-	crypto_map_device loop_device mapper_device ;
+	Crypto_device.create loop_device mapper_device ;
 
 	Unix.setuid (Unix.geteuid ());
 
-	really_mount "ext2" ("/dev/mapper/"^mapper_device) mount_options mount_point; 
+	Mount.attach_hidden "ext2" ("/dev/mapper/"^mapper_device) mount_options mount_point; 
 	  
 	try 
-	  mtab_add "dmcrypt2" volume_container (option_table_to_string options) mount_point;
+	  Mount.add_entry "lcrypt" volume_container (option_table_to_string options) mount_point;
 
-	with x -> really_umount mount_point	  
-      with x -> crypto_unmap_device mapper_device ; raise x
-  with x -> losetup_delete loop_device ; raise x
+	with x -> Mount.detach_really mount_point ; raise x
+      with x -> Crypto_device.remove mapper_device ; raise x
+  with x -> Loop.delete loop_device ; raise x
 ;;
 
 

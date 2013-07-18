@@ -40,11 +40,11 @@ let get_option  = option_table_get options
 in
   Unix.setuid (Unix.geteuid ()); 
 
-  really_umount mount_point;
+  Mount.detach_really mount_point;
   let  mapperdev = (get_option "dmdev")
   and  loopdev   = (get_option "loopdev")
   in 
-    crypto_unmap_device mapperdev;
-    losetup_delete      loopdev
+    Crypto_device.remove mapperdev;
+    Loop.delete loopdev
 ;;
 

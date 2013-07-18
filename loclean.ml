@@ -29,6 +29,6 @@
 *)
 
 exception No_Error   ;; 
-Mountlib.loclean  () ;;
+Mountlib.Loop.clean  () ;;
 
 

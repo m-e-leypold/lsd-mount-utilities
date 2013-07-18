@@ -29,30 +29,32 @@
 *)
 
 
-exception Loop_probing_failed
-exception Loop_binding_failed of string
-exception Loop_unbinding_failed of string
+module Loop: sig
 
-val losetup_delete : loop_device:string -> unit
-val losetup : loop_device:string -> file:string -> unit
-val loprobe : file:string -> string
-val loclean : unit -> unit
+  val delete : loop_device:string -> unit
+  val setup  : loop_device:string -> file:string -> unit
+  val probe  : file:string -> string
+  val clean  : unit -> unit
 
-
+  exception Probing_failed
+  exception Binding_failed   of string  (* device path     *) 
+  exception Unbinding_failed of string  (* device path     *)
+end
 
 val path_to_dmname : string -> string
-val crypto_map_device : loop_device:string -> mapper_device:string -> unit
-val crypto_unmap_device : mapper_device:string -> unit
 
 
 
-val mtab_add :
-  fstype:string ->
-  device:string -> options:string -> mount_point:string -> unit
-val really_mount :
-  fstype:string ->
-  device:string -> options:string -> mount_point:string -> unit
-val really_umount : mount_point:string -> unit
+module Mount: sig
+  val attach            : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
+  val attach_hidden     : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
+  val add_entry         : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
+  val detach            : mount_point:string -> unit
+  val detach_really     : mount_point:string -> unit
+end
+
+
+
 exception Mtab_format_error
 type fs_type = string
 type fs_options = string
@@ -62,6 +64,8 @@ type ('a, 'b, 'c) mount_spec = {
   mount_options : 'c;
   device : 'a option;
 }
+
+
 val parse_mtab_line : string list -> (string, string, string) mount_spec
 type 'a option_table = ('a, string option) Hashtbl.t
 val option_table_add : ('a, 'b option) Hashtbl.t -> 'a -> 'b -> unit
@@ -73,3 +77,9 @@ val mtab_line_to_entry : string -> (string, string, string) mount_spec
 val get_mtab : unit -> (string, string, string) mount_spec list
 val get_mtab_entry :
   string -> (string, string, (string, string option) Hashtbl.t) mount_spec
+
+
+module Crypto_device : sig
+  val create : encrypted_device:string  -> decrypted_device:string -> unit
+  val remove : decrypted_device:string  -> unit
+end

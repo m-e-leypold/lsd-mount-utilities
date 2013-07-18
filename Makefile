@@ -65,7 +65,7 @@ $(OCAML-PROGRAMS): %: %.ml $(OCAML-MODULES:%=%.cmx)
 	$(STRIP) $@
 
 clean:
-	rm -f *.cmx *.cmi *.o *~ a.out $(OCAML-PROGRAMS)
+	rm -f *.cmx *.cmi *.o *~ a.out $(OCAML-PROGRAMS) PATCHES/*~
 	rm -rf FILES
 
 

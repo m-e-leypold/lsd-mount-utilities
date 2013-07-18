@@ -1,0 +1,63 @@
+
+	
+Changes 1.1 - 1.2
+-----------------
+
+	* Fixed some bugs: (1) Exception during loop probing when loop is
+	  compiled into kernel. (2) Mount was entered into mtab as type
+	  dmcrpyt2 instead of lcrypt. (3) Error in not reraising
+	  exceptions during some failures (and thus not freeing resources).
+	
+	* Restructured mountlib.ml somewhat with an eye on future
+	  re-usability in other projects. This effort is incomplete and
+	  will be continued.
+
+	=> Release 1.2, M E Leypold <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	
+Details
+-------	
+
+2007-02-02  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* mountlib.ml: 
+
+
+	  > 1. Das modprobe loop schlaegt fehl, wenn loop statisch in den Kernel
+	  > kompiliert ist. Damit schlaegt dann auch mount fehl. 
+
+	  > Ich weiss gerade
+	  > nur nicht, wie man diesen Fall sinnvoll von "es gibt kein loopback im
+	  > Kernel" unterscheiden kann.
+
+	  Gar nicht. Man macht einfach weiter, dann scheitert der mount halt,
+	  wenn's das nicht war. Ich hab das gleich mal eingebaut.
+
+
+2007-02-01  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* mountlib.ml: Renamed functions and grouped them in sub modules
+	  (this has been done with an eye on later reuse in other
+	  projects). Only partially done so far!
+	  
+	  Move cryptsetup functions into module Crypto_device. Luks_device
+	  should do the same for Luks. 
+	  	  
+
+	* mount.lcrypt.ml: Fixed typo (fstype was entered as dmcrypt2
+	  instead of lcrypt -> this perhaps is responsible that we couldn't
+	  reproduce the trailing '/' problem reported by AU.
+
+	  Actually I cannot understand how that could have worked before.
+
+	  REQUIRES EXTRA TESTING NOW!
+	  
+	* Various files: Changes to reflect renaming in mountlib.ml.
+
+2007-01-30  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* README: Corrected typo, mangled e-mail address.
+	
+	* mount.lcrypt.ml: Added missing reraising or exceptions on failure of final mount procedure.
+	
+

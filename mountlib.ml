@@ -28,97 +28,123 @@
 
 *)
 
-   
-exception Loop_probing_failed   ;;       
-exception Loop_binding_failed   of string  (* device path     *) ;;       
-exception Loop_unbinding_failed of string  (* device path     *) ;;  
 
-
-let losetup_delete ~loop_device =
-  Subprocess.run  "/sbin/losetup" [ "-d" ; loop_device ] 
-;; 
-
-let losetup ~loop_device ~file =
-  Subprocess.run  "/sbin/losetup" [ loop_device ; file ] 
-;;
-
-
-let loprobe ~file =
-  
-  Subprocess.run "/sbin/modprobe" ["loop"];
-
-  let rec loop n =
-    if n > 7 then raise Loop_probing_failed
-    else
-      begin
-	let path = "/dev/loop" ^ (string_of_int n)
-	in 
-	  try
-	    losetup path file ;
-	    path
-	  with 
-	      Subprocess.Failed _ -> (loop (n+1))
-	    | x                   -> raise x
-      end
-  in
-    loop 0
-;;
-
-
-
-let loclean () =
-
-  let rec loop n =
-    if n > 7 then ()
-    else
-      begin
-	let path = "/dev/loop" ^ (string_of_int n)
-	in 
-	  try
-	    losetup_delete path;
-	    loop (n+1)
-	  with 
-	      Subprocess.Failed _   -> (loop (n+1))
-	    | x                     -> raise x
-      end
-  in
-    loop 0
-;;
-
-
-let path_to_dmname p =
-  ".dmcrypt2." ^ (Str.global_replace  (Str.regexp "//*") "#" p)
-;;
-
-
-let crypto_map_device ~loop_device ~mapper_device =
-  Subprocess.run "/sbin/cryptsetup" [ "create" ; "-c" ; "aes" ; mapper_device ; loop_device ]
-;;
-
-
-let crypto_unmap_device ~mapper_device =
-  Subprocess.run "/sbin/cryptsetup" [ "remove" ; mapper_device ]
-;;
-
-(* note: failure here might be due to too short container file *)
-
-let mtab_add ~fstype ~device ~options ~mount_point =
-  Subprocess.run "/bin/mount" [ "-i" ; "-f"; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
-;;
-
-let mtab_add ~fstype ~device ~options ~mount_point =
-  Subprocess.run "/bin/mount" [ "-i" ; "-f"; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
-;;
-
-let really_mount ~fstype ~device ~options ~mount_point =
-  Subprocess.run "/bin/mount" [ "-n" ; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
-;;
-
-let really_umount ~mount_point =
-  Subprocess.run "/bin/umount" [ "-i" ; mount_point ]
-;;
 
 (* ------------------------------------------------------ *)
+
+let path_to_dmname p =
+  ".LSD.lcrypt." ^ (Str.global_replace  (Str.regexp "//*") "#" p)
+;;
+
+
+(* ------------------------------------------------------ *)
+
+
+module Loop = struct
+   
+  exception Probing_failed   ;;       
+  exception Binding_failed   of string  (* device path     *) ;;       
+  exception Unbinding_failed of string  (* device path     *) ;;  
+
+
+  let delete ~loop_device =
+    try
+      Subprocess.run  "/sbin/losetup" [ "-d" ; loop_device ] 
+    with 
+	Subprocess.Failed _ -> raise (Unbinding_failed loop_device)
+      | x -> raise x
+      
+      
+  let setup ~loop_device ~file =
+    try
+      Subprocess.run  "/sbin/losetup" [ loop_device ; file ] 
+    with 
+	Subprocess.Failed _ -> raise (Binding_failed loop_device)
+      | x -> raise x
+      
+
+  let probe ~file =
+    
+    ( try
+
+	Subprocess.run "/sbin/modprobe" ["loop"]
+
+      with Subprocess.Failed _ -> () | x -> raise x 
+      
+    (* Ignore errors with modprobe. Either the loop module is statically in the kernel,
+       or it has just been loaded or the loading failed. It will turn out in the next step
+       which is the case: We'll see, wether probing succeeds or fails and do not
+       distinguish between those cases here. *)
+    );
+    
+    let rec loop n =
+      if n > 7 then raise Probing_failed
+      else
+	begin
+	  let path = "/dev/loop" ^ (string_of_int n)
+	  in 
+	    try
+	      setup path file ;
+	      path
+	    with 
+	      Binding_failed _ -> (loop (n+1))
+	      | x                   -> raise x
+	end
+    in
+      loop 0
+
+
+  let clean () =
+
+    let rec loop n =
+      if n > 7 then ()
+      else
+	begin
+	  let path = "/dev/loop" ^ (string_of_int n)
+	  in 
+	    try
+	      delete path;
+	      loop (n+1)
+	    with 
+		Unbinding_failed _    -> (loop (n+1))
+	      | x                     -> raise x
+	end
+    in
+      loop 0
+	
+end
+;;
+
+
+
+(* ------------------------------------------------------ *)
+
+module Mount = struct
+
+  let attach ~fstype ~device ~options ~mount_point =
+    Subprocess.run "/bin/mount" [ "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+
+  let attach_hidden ~fstype ~device ~options ~mount_point =
+    Subprocess.run "/bin/mount" [ "-n" ; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+
+  let detach ~mount_point =
+    Subprocess.run "/bin/umount" [ mount_point ]
+
+  let detach_really ~mount_point =
+    Subprocess.run "/bin/umount" [ "-i" ; mount_point ]
+      
+  let add_entry ~fstype ~device ~options ~mount_point =
+    Subprocess.run "/bin/mount" [ "-i" ; "-f"; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+
+  module Compat = struct
+
+    let mount           = attach
+    let mount_n         = attach_hidden
+    let mount_fi        = add_entry
+    let umount          = detach
+    let umount_n        = detach_really
+  end
+end;;
 
 
 exception Mtab_format_error;;
@@ -236,8 +262,33 @@ let get_mtab_entry dir =
 ;;
 
 
-
 (* option_table_maybe_get *)
 (* let option_table_get tbl ... -> string option *)
 (* option_table_test *)
 (* mount_options_get, mount_options_test <- test/get on entry *)
+
+
+
+
+
+(* ------------------------------------------------------ *)
+
+
+module Crypto_device = struct
+
+  let create ~encrypted_device ~decrypted_device =
+    Subprocess.run "/sbin/cryptsetup" [ "create" ; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
+
+  (* note: failure here might be due to too short container file *)
+
+  let remove ~decrypted_device =
+    Subprocess.run "/sbin/cryptsetup" [ "remove" ; decrypted_device ]
+end
+;;
+
+
+(* ------------------------------------------------------ *)
+
+
+
+
