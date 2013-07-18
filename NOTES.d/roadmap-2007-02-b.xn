@@ -5,7 +5,8 @@
     
     
     (not necessarily in that order)
-    
+
+    * Smarter modprobing for loop.o -> use output of lsmod.
 
     * Suppress all the verbose output on standard error during probing.
     
@@ -14,6 +15,8 @@
     * Add support for choosing cipher  and decrypted filesystem type in options and /etc/fstab.   
     
     * Add support for directly encrypted block devices (i.e. no loopback device).
+    
+    * Add support for unencrypted block devices (no mapper!)
 
     * Replace 'subprocess.ml' by a more
       flexible module (work is already in progress).

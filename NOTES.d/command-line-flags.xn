@@ -1,0 +1,14 @@
+    
+    fsck: The right way to handle args and options: There is no
+    general way to pass options via the wrapper, only non-arg flags
+    should be passed anyway, but others work too, so we should support:
+    
+    fsck [-t lcrypt] -f ext3 /secret/image  # "real" file system
+    fsck [-t lcrypt] -l /secret/image       # lookup parameters in fstab
+    
+    second case needs not be implemented now, for now we only need to
+    skip args properly, respectively pass them to the next fsck.
+    
+    mkfs -t lcrypt [...] -F /secret/image [400]
+    
+    

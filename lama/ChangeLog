@@ -1,0 +1,17 @@
+2007-04-13  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* README, LICENSE: Added.
+
+	* Trace.ml: Has been added yesterday to assist with a problem in
+ 	  debugging lsd-mount-utilities.
+
+2007-04-11  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* io_task.ml: Fixed a problem with state (acc) passing in the task creation functions (state
+	  sometimes was not passed properly when the channel was not ready).
+
+	* subprocess.ml: Changed some internal variable naming.
+
+	
+	  
+

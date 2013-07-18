@@ -1,22 +1,29 @@
 
-    Release 1.3 of LSD mount utilities with mkfs, fsck and LUKS support
-    ___________________________________________________________________
+    Release 1.4 of LSD mount utilities
+    __________________________________
     
-    A new version (1.3) of the LSD mount utilities has been released.
     
-      - LUKS support has been tested (by Alexander Ulrich) and does not
-	seem to fail.
+    A new version (1.4) of the LSD mount utilities has been released.
     
-      - Basic versions of mkfs.lcrypt and fsck.lcrypt have been added:
-        You can now use mkfs to create a file system on your encrypted
-        device and fsck to check your file system.
-     
-      - The file USAGE (see below) is intended to be the beginning of
-        a user manual.
+    This release doesn't add new functionality. Instead parts of the
+    code have been reorganized in (probably more reliable) reusable
+    components.
+    
+    As a side effect
+    
+      - The installatain footprint has been reduced by factor ~2.3
+        (formerly separate programs have been gather into a single one
+        and switch on the name under which the program is installed).
+    
+      - The tool verbosity is greatly reduced (since we now suppress
+        standard error for most of the probing with external
+        tools). To get a partial trace of the things happening
+        internally (e.g. which external programs are invoked) you can
+        now set the environment variable lsd_lama_trace=verbose.
     
     LSD mount utilities are written in OCaml.
     
-    Regards -- M E Leypold, 16 Feb 2007.
+    Regards -- M E Leypold, 13 Apr 2007.
     
     
 *   About

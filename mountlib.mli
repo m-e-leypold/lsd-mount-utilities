@@ -29,8 +29,6 @@
 *)
 
 
-val path_to_dmname : string -> string
-
 
 
 module Loop: sig
@@ -90,6 +88,10 @@ module Filesystem: sig
       string -> (string, string, (string, string option) Hashtbl.t) entry
 
   end
+end
+
+module Mapper: sig 
+  val path_to_device_name : string -> string
 end
 
 

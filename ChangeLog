@@ -1,4 +1,30 @@
+Changes 1.3 - 1.4
+-----------------
 
+	* Switch to Lama.
+	
+	* Consolidated tools into a single program image.
+
+	The net result of these changes is a smaller installation food
+	print and less verbosity. Setting environment variable
+	lsd_debug_trace=verbose activates a debug trace on stdandard error.
+
+
+2007-04-13  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* Switched to Lama library for shell procedures / subprocess handling.
+
+	* Consolidated tools into a single program image (functionality
+	  involved depends on the name under which the program image is
+	  installed).
+
+	
+2007-02-24  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* mountlib.ml: Added Mapper module. Moved path_to_dmname to
+	  Mapper. -- There will be some reoganisation of the Mapper and
+	  Crypto modules in future releases.
+	
 
 Changes 1.2.1 - 1.3
 -------------------

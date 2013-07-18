@@ -28,12 +28,17 @@
 
 default: all
 
-OCAML-PROGRAMS    := $(patsubst %.ml,%, $(wildcard *.lcrypt.ml)) loclean
-OCAML-MODULES     := subprocess mountlib
+OCAML-PROGRAMS    := lsd-mount
+OCAML-MODULES     := trace subprocess io_task shell_procedure mountlib linux
+LAMA-MODULES      := trace subprocess io_task shell_procedure
 OCAML-LIBS        := unix str
 
+
+OCAMLC            := ocamlc
+OCAMLMKTOP        := ocamlmktop
+
 OCAMLOPT          := ocamlopt
-OCAMLOPT-FLAGS    := -compact
+OCAMLOPT-FLAGS    := $(OCAML-FLAGS) -compact 
 
 STRIP             := strip
 
@@ -44,17 +49,12 @@ INSTALL-MODE-SUID := -m 4755 -o root -g root
 
 # -----------------------------------------------------------------------------------
 
-fsck.lcrypt.cmx: mountlib.cmx
-loclean.cmx: mountlib.cmx
-mkfs.lcrypt.cmx: mountlib.cmx
-mount.lcrypt.cmx: mountlib.cmx
-mountlib.cmx: subprocess.cmx mountlib.cmi
-subprocess.cmx: subprocess.cmi
-umount.lcrypt.cmx: mountlib.cmx
+include ModuleDeps.mk
+
+$(LAMA-MODULES:%=%.ml) $(LAMA-MODULES:%=%.mli) : %: lama/%
+	cp $< $@
 
 # -----------------------------------------------------------------------------------
-
-.PRECIOUS: %.cmi
 
 ifneq ($(USER),root)
                    INSTALL-MODE-SUID := $(INSTALL-MODE)
@@ -63,6 +63,9 @@ endif
 
 FAIL = { rm -f "$@" ; exit 1 ; }
 
+# -----------------------------------------------------------------------------------
+
+.PRECIOUS += %.cmi
 
 %.cmi: %.mli
 	$(OCAMLOPT) $(OCAMLOPT-FLAGS) -c $< || $(FAIL)
@@ -70,12 +73,23 @@ FAIL = { rm -f "$@" ; exit 1 ; }
 %.cmx: %.ml %.cmi
 	$(OCAMLOPT) $(OCAMLOPT-FLAGS) -c $< || $(FAIL)
 
+%.cmo: %.ml %.cmi
+	$(OCAMLC) $(OCAML-FLAGS) -c $< || $(FAIL)
+
 $(OCAML-PROGRAMS): %: %.ml $(OCAML-MODULES:%=%.cmx)
 	$(OCAMLOPT) $(OCAML-LIBS:%=%.cmxa)  $(filter %.cmx,$^) $(OCAMLOPT-FLAGS) -o $@ $<  || $(FAIL)
 	$(STRIP) $@
 
+%.top: $(OCAML-MODULES:%=%.cmo)
+	$(OCAMLMKTOP) -o $@ $(OCAML-LIBS:%=%.cma) $(filter %.cmo,$^) 
+
+# -----------------------------------------------------------------------------------
+
+.PRECIOUS: $(.PRECIOUS)
+
 clean:
-	rm -f *.cmx *.cmi *.o *~ a.out $(OCAML-PROGRAMS) PATCHES/*~
+	rm -f *.cmx *.cmi *.cma *.cmo *.o *~ a.out $(OCAML-PROGRAMS) PATCHES/*~ *.top 
+	rm -f $(LAMA-MODULES:%=%.ml) $(LAMA-MODULES:%=%.mli)
 	rm -rf FILES
 
 
@@ -83,10 +97,22 @@ all: $(OCAML-PROGRAMS)
 
 install: all
 	$(INSTALL) -d $(DEST)/sbin
-	$(INSTALL) $(INSTALL-MODE-SUID) $(filter %mount.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
-	$(INSTALL) $(INSTALL-MODE) $(filter-out %mount.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
+	# $(INSTALL) $(INSTALL-MODE-SUID) $(filter %mount.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
+	$(INSTALL) $(INSTALL-MODE-SUID) lsd-mount $(DEST)/sbin/lsd-mount.suid
+	for i in mount.lcrypt umount.lcrypt; do ln -f $(DEST)/sbin/lsd-mount.suid $(DEST)/sbin/$$i; done
+	# $(INSTALL) $(INSTALL-MODE) $(filter-out %mount.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
+	$(INSTALL) $(INSTALL-MODE) lsd-mount $(DEST)/sbin/lsd-mount.bin
+	for i in loclean mkfs.lcrypt fsck.lcrypt; do ln -f $(DEST)/sbin/lsd-mount.bin $(DEST)/sbin/$$i; done
 
 uninstall: 
 	rm -f $(OCAML-PROGRAMS:%=$(DEST)/sbin/%)
 	rmdir $(DEST)/sbin || true
+
+deps:
+	ocamldep $(OCAML-MODULES:%=%.ml) $(OCAML-PROGRAMS:%=%.ml) > ModuleDeps.mk
+
+top: lcrypt.top
+
+
 test:
+

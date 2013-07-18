@@ -29,16 +29,8 @@
 *)
 
 
-
-(* ------------------------------------------------------ *)
-
-let path_to_dmname p =
-  ".LSD.lcrypt." ^ 
-    (Str.global_replace  (Str.regexp "//*") "#" 
-       (Str.global_replace  (Str.regexp "/*$") "" 
-	  p))
-;;
-
+open Shell_procedure.Privileges;;
+open Shell_procedure.Redirect;;
 
 (* ------------------------------------------------------ *)
 
@@ -51,33 +43,27 @@ module Loop = struct
 
 
   let delete ~loop_device =
-    try
-      Subprocess.run  "/sbin/losetup" [ "-d" ; loop_device ] 
-    with 
-	Subprocess.Failed _ -> raise (Unbinding_failed loop_device)
-      | x -> raise x
-      
+    if    not (Shell_procedure.get_status  "/sbin/losetup" [ "-d" ; loop_device ])
+    then  raise (Unbinding_failed loop_device)
       
   let setup ~loop_device ~file =
-    try
-      Subprocess.run  "/sbin/losetup" [ loop_device ; file ] 
-    with 
-	Subprocess.Failed _ -> raise (Binding_failed loop_device)
-      | x -> raise x
-      
+    if    not(Shell_procedure.get_status  "/sbin/losetup" [ loop_device ; file ] )
+    then  raise (Binding_failed loop_device)
 
   let probe ~file =
     
-    ( try
-
-	Subprocess.run "/sbin/modprobe" ["loop"]
-
-      with Subprocess.Failed _ -> () | x -> raise x 
+    ( match Shell_procedure.run "/sbin/modprobe" ["loop"]
+      with  _ -> ()
       
-    (* Ignore errors with modprobe. Either the loop module is statically in the kernel,
-       or it has just been loaded or the loading failed. It will turn out in the next step
-       which is the case: We'll see, wether probing succeeds or fails and do not
-       distinguish between those cases here. *)
+      (* Ignore errors with modprobe. Either the loop module is
+         statically in the kernel, or it has just been loaded or the
+         loading failed. It will turn out in the next step which is
+         the case: We'll see, wether probing succeeds or fails and do
+         not distinguish between those cases here. 
+
+         This is crude and should be changed some time in the future.
+
+      *)
     );
     
     let rec loop n =
@@ -122,26 +108,39 @@ end
 
 (* ------------------------------------------------------ *)
 
+
+
+
+
 module Filesystem = struct
 
   let mount ~fstype ~device ~options ~mount_point =
-    Subprocess.run "/bin/mount" [ "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+    Shell_procedure.execute 
+      ~privileges:keep 
+      "/bin/mount" [ "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
 
   let mount_hidden ~fstype ~device ~options ~mount_point =
-    Subprocess.run "/bin/mount" [ "-n" ; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+    Shell_procedure.execute 
+      ~privileges:escalate 
+      "/bin/mount" [ "-n" ; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
 
   let umount ~mount_point =
-    Subprocess.run "/bin/umount" [ mount_point ]
+    Shell_procedure.execute 
+      ~privileges:keep 
+      "/bin/umount" [ mount_point ]
 
   let umount_really ~mount_point =
-    Subprocess.run "/bin/umount" [ "-i" ; mount_point ]
+    Shell_procedure.execute 
+      ~privileges:keep 
+      "/bin/umount" [ "-i" ; mount_point ]
 
   let mkfs ?blocksize ~device =
-    Subprocess.run "/sbin/mkfs"  
+    Shell_procedure.execute 
+      "/sbin/mkfs"  
       ([ "-t" ; "ext2" ; device ] @ (match blocksize with None -> [] | Some x -> [string_of_int x]))
       
   let fsck ~device =
-    Subprocess.run "/sbin/fsck"   [ "-t" ; "ext2" ; device ]
+    Shell_procedure.execute "/sbin/fsck"   [ "-t" ; "ext2" ; device ]
 
 
   module Options = struct
@@ -213,7 +212,7 @@ module Filesystem = struct
     exception Format_error
 
     let add_entry ~fstype ~device ~options ~mount_point =
-      Subprocess.run "/bin/mount" [ "-i" ; "-f"; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+      Shell_procedure.execute "/bin/mount" [ "-i" ; "-f"; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
 
 
     type ('mount_point_t, 'fstype_t, 'options_t) entry = {	
@@ -246,7 +245,7 @@ module Filesystem = struct
       parse_line (Str.split (Str.regexp "[ \t]+") l)
 
     let get () =
-      List.map line_to_entry (Subprocess.run_catch_stdout "/bin/mount" [])
+      List.map line_to_entry (Shell_procedure.get_output "/bin/mount" [])
 
     let get_mtab = get (* for internal use *)
 
@@ -267,38 +266,52 @@ end;;
 (* ------------------------------------------------------ *)
 
 
+module Mapper  = struct
+
+  let path_to_device_name p =
+    "." ^ 
+      (Str.global_replace  (Str.regexp "//*") "#" 
+	 (Str.global_replace  (Str.regexp "/*$") "" 
+	    p))
+end
+;;
+
+
 module Crypto = struct
 
   module Plain = struct
     
     let create ~encrypted_device ~decrypted_device =
-      Subprocess.run "/sbin/cryptsetup" [ "create" ; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
+      Shell_procedure.execute 
+	~stdin:inherit_from_parent
+	~stdout:inherit_from_parent
+	"/sbin/cryptsetup" [ "create" ; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
 	
     (* note: failure here might be due to too short container file *)
-
+	
     let create_verify_pp ~encrypted_device ~decrypted_device =
-      Subprocess.run "/sbin/cryptsetup" [ "create" ; "-y"; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
+      Shell_procedure.execute 
+	~stdin:inherit_from_parent
+	~stdout:inherit_from_parent
+	"/sbin/cryptsetup" [ "create" ; "-y"; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
 	
     let remove ~decrypted_device =
-      Subprocess.run "/sbin/cryptsetup" [ "remove" ; decrypted_device ]
+      Shell_procedure.execute 
+	"/sbin/cryptsetup" [ "remove" ; decrypted_device ]
   end
     
   module LUKS = struct
     
     let is_valid ~encrypted_device =
-      try
-	Subprocess.run "/sbin/cryptsetup" ["isLuks" ; encrypted_device] ;
-	true
-      with
-	  (* either this is no luks device or we don't have cryptsetup-luks *)
-	| Subprocess.Failed _ -> false
-	| x -> raise x
+      Shell_procedure.get_status
+	~stderr:when_trace
+	"/sbin/cryptsetup" ["isLuks" ; encrypted_device] 
 
     let create ~encrypted_device ~decrypted_device =
-      Subprocess.run "/sbin/cryptsetup" [ "luksOpen" ; encrypted_device ; decrypted_device ]
+      Shell_procedure.execute "/sbin/cryptsetup" [ "luksOpen" ; encrypted_device ; decrypted_device ]
 	
     let remove ~decrypted_device =
-      Subprocess.run "/sbin/cryptsetup" [ "luksClose" ; decrypted_device ]
+      Shell_procedure.execute "/sbin/cryptsetup" [ "luksClose" ; decrypted_device ]
   end
 
   type setuptype = Plain | LUKS
