@@ -1,0 +1,140 @@
+						-*- mode: outline -*-
+
+
+    LSD Mount Utilities 
+    ___________________________________________________
+
+			      (C) 2006,2007 M E Leypold
+
+
+*   About 
+    ====
+
+    The LSD mount utilities allow to automate mounting of encrypted
+    filesystems with cryptsetup and loopback devices and to enable
+    users (not only root) to mount encrypted filesystems by adding
+    entries to /etc/fstab.
+
+    The LSD mount utilities are licensed/distributed under the the
+    terms of the GPL Version 2 (no later version). We'll usually be
+    happy though to relicense under other OS licenses, but you have to
+    ask and get the licensing change from us in writing.
+
+    The LSD mount utilities are available from
+    http://software.m-e-leypold.de. Read the README from the
+    distribution before using the software!
+
+
+*   Haftungsausschluß (1)
+    =====================
+
+    ( This is in German since it is intended to apply in the
+      jurisdiction of the Federal Republic of Germany. )
+
+    Der Distributor (M E Leypold, Softwaredienstleistungen und
+    Beratung) übernimmt, soweit dies gesetzlich zulässig ist,
+    keinerlei Haftung und Gewährleistung für die hier zur Verfügung
+    gestellten Programme und Quelltexte.
+
+    Für vollständige Details beachten Sie bitte unbedingt den
+    Abschnitt "Haftungsausschluss (2)".
+    
+    ( End of German Disclaimer )
+
+
+*   What does it do? How does it work?
+    ==================================
+
+    In Linux /sbin/mount calls /sbin/mount.$FSTYPE and /sbin/umount
+    calls /sbin/umount.$FSTYPE if those programs exist. This leads to
+    the observation, that the filesystem types either in /etc/fstab or
+    passed to mount with -t rather more characterize rather a mounting
+    mechanism than a file system type. 
+
+    With the LSD mount utilities this mechanism is used to delegate
+    mounting of encrypted loopback devices to mount.lcrypt which
+    automates the steps necessary to set up those devices (like:
+    modprobe, losetup, cryptsetup). 
+
+    mount.lcrypt on the other side should know the filesystem of the
+    decrypted device from a mount option. (This does not work yet,
+    presently all lcrypt devices have the decrypted filesystem type
+    ext2).
+
+    Detailed instructions on how to mount as root or how to setup an
+    entry in /etc/fstab is give in INSTALL.
+
+
+*   Restriction
+    ===========
+
+    There is no mkfs.lcrypt or fsck.lcrypt yet. This will come soon.
+    
+    
+*   Installation
+    ============
+
+    See the file INSTALL.
+
+
+*   How to get help
+    ===============
+
+    If you need help, have questions concerning QDex or have
+    suggestions for further implementation you can write the developer
+    at
+
+       development-2006-8ecbb5cc8a@m-e-leypold.de.
+
+    I don't guarantee support, but will usually do my best to help.
+
+    
+*   Haftungsausschluß (2)
+    =====================
+
+    Bei den auf hier zur Verfügung gestellten Programmen handelt es
+    sich um freie Software oder Demo-Versionen.
+
+    Unter den Begriff "freie Software" fallen alle Programme die unter
+    einem als "Open Source" oder "Free Software" bekannten
+    Lizenzmodell verfügbar sind.
+
+    Der Distributor (M E Leypold, Softwaredienstleistungen und
+    Beratung) übernimmt, soweit dies gesetzlich zulässig ist,
+    keinerlei Haftung und Gewährleistung für diese Programme. Sofern
+    nicht anderweitig schriftlich bestätigt, stellen die
+    Copyright-Inhaber dieser Programme und/oder Dritte, die Programme
+    so zur Verfügung ``wie sie sind'', ohne irgendeine Gewährleistung,
+    weder ausdrücklich noch implizit, einschließlich - aber nicht
+    begrenzt auf - Marktreife oder Verwendbarkeit für bestimmte
+    Zwecke. Das volle Risiko bezüglich Qualität und Leistungsfähigkeit
+    dieser Programme und Komponenten liegt bei der
+    EmpfängerIn. Sollten sich diese Programme und Komponenten als
+    fehlerhaft herausstellen, liegen die Kosten für notwendigen
+    Service, Reparatur oder Korrektur bei der EmpfängerIn.
+
+    In keinem Fall, außer, wenn durch geltendes Recht gefordert oder
+    schriftlich zugesichert, ist irgendein Copyright-Inhaber oder
+    irgendein Dritter, der diese Programme und Komponenten in Lizenz
+    erlaubt modifiziert oder verbreitet hat, der EmpfängerIn gegenüber
+    für irgendwelche Schäden haftbar, einschließlich jeglicher
+    allgemeiner oder spezielle Schäden, die aus der Benutzung der
+    Programme und Komponenten oder der Unbenutzbarkeit der Programme
+    und Komponenten folgen (einschließlich -- aber nicht beschränkt
+    auf -- Datenverluste, fehlerhafte Verarbeitung von Daten,
+    Verluste, die von der EmpfängerIn oder anderen getragen werden
+    müssen oder dem Unvermögen der Programme und Komponenten mit
+    irgendeinem anderen Programm oder Komponenten zusammenzuarbeiten),
+    selbst wenn ein Copyright-Inhaber oder Dritter über die
+    Möglichkeit dieser Schäden unterrichtet worden war.
+
+    Dieser Haftungsausschluss soll auch gelten -- soweit gesetzlich
+    zulässig -- wenn der Distributor Rechte-Inhaber oder Autor eines
+    der installierten Programme oder Komponenten ist oder Dritte dafür
+    bezahlt hat, diese Programme oder Komponenten zu erstellen.
+   
+--  
+                       M E Leypold, Softwaredienstleistungen und Beratung  
+Anschrift:             Platz der Freundschaft 11, D-18059 Rostock 
+Tel./Mail:             +49/381/4033891, kontakt-8ecbb5cc8@m-e-leypold.de
+Weitere Informationen: www.m-e-leypold.de

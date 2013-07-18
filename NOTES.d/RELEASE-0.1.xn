@@ -1,0 +1,72 @@
+						-*- mode: outline -*-
+
+
+    LSD Mount Utilities 
+    ___________________________________________________
+
+			      (C) 2006,2007 M E Leypold
+
+
+*   About 
+    ====
+
+    The LSD mount utilities allow to automate mounting of encrypted
+    filesystems with cryptsetup and loopback devices and to enable
+    users (not only root) to mount encrypted filesystems by adding
+    entries to /etc/fstab.
+
+    The LSD mount utilities are licensed/distributed under the the
+    terms of the GPL Version 2 (no later version). We'll usually be
+    happy though to relicense under other OS licenses, but you have to
+    ask and get the licensing change from us in writing.
+
+    The LSD mount utilities are available from
+    http://software.m-e-leypold.de. Read the README from the
+    distribution before using the software!
+
+
+*   What does it do? How does it work?
+    ==================================
+
+    In Linux /sbin/mount calls /sbin/mount.$FSTYPE and /sbin/umount
+    calls /sbin/umount.$FSTYPE if those programs exist. This leads to
+    the observation, that the filesystem types either in /etc/fstab or
+    passed to mount with -t rather more characterize rather a mounting
+    mechanism than a file system type. 
+
+    With the LSD mount utilities this mechanism is used to delegate
+    mounting of encrypted loopback devices to mount.lcrypt which
+    automates the steps necessary to set up those devices (like:
+    modprobe, losetup, cryptsetup). 
+
+    mount.lcrypt on the other side should know the filesystem of the
+    decrypted device from a mount option. (This does not work yet,
+    presently all lcrypt devices have the decrypted filesystem type
+    ext2).
+
+
+**  Mounting directly
+    -----------------
+
+    Pass '-t lcrypt' to mount:
+
+      mount -t lcrypt /data/encrypted-image /mnt 
+
+    You'll be asked for the passphrase.
+    
+
+**  With fstab / allow user mounting
+    --------------------------------
+
+    Use lcrypt as filesystemtype. Use the option 'user', if non
+    privileged users should be able to mount the device:
+
+      /data/encrypted-image /secret-mnt lcrypt  rw,noauto,user,exec 0 0
+
+    Any user can the use
+
+      mount /data/encrypted-image
+
+    and is then asked for the passphrase.
+
+

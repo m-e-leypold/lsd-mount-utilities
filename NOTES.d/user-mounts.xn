@@ -1,0 +1,14 @@
+
+    How mounting by users works
+    ___________________________
+    
+    
+    Option 'user' in fstab required. This already guards the call to
+    mount.$FSTYPE. Mounting then must enter user=$USER into the
+    options for mtab.
+    
+    Unmounting checks again for the user option and then compares
+    user=... with the name of the user corresponding to the uid (not
+    the euid). If they agree, the umount.$FSTYPE utility is called.
+    
+    

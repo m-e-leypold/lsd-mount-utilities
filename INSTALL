@@ -1,0 +1,125 @@
+				-*- mode: outline -*-
+
+
+    LSD mount utilities -- Installation Instructions
+    ________________________________________________
+
+
+    Copyright (C) 2006,2007  M E Leypold, Software-Dienstleistungen und Beratung
+ 
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation (no later
+    version).
+ 
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+ 
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+    02110-1301 USA.
+
+
+*   What will be installed?
+    =======================
+
+    - /sbin/loclean        - a tool to delete the file associations of unused loopback devices.
+    - /sbin/mount.lcrypt   - mount helper to mount encrypted file systems
+    - /sbin/umount.lcrypt  - unmount helper to unmount encrypted file systems
+
+
+*   How to compile/install
+    ======================
+
+**  Requirements
+    ------------
+
+    You need GNU make and ocaml (3.8 or later, has been tested with
+    3.8). Since the LSD mount utilities a targetted towards Linux,
+    this should not be a problem with a relatively recently
+    distribution.
+
+
+**  Configuration
+    -------------
+
+    It should not be necessary to do extra configuration. If it
+    actually is necessary, you can edit the first section of the
+    'Makefile' to set compilation and installation parameters (like owner and mode).
+
+
+**  Compilation
+    -----------
+
+    Type
+
+      $ make all
+
+    This should create utilities listed above under "What will be installed?".
+
+
+**  Installation
+    ------------
+
+    In principle the installation is done by typing
+
+      $ make install
+
+    The default target directory and installation file modes depend on
+    wether you're doing this as root or as normal (unprivilged) user.
+
+      - As root -> installs to /sbin and set uid bits (mode 4755) for mount.lcrypt and umount
+
+      - As normal user -> installs to FILES/sbin (subdirectory of
+        source directory), doesn't set suid bits or ownership).
+
+    If you want to do package for Debian you'll probably have to use fakeroot. You can use
+
+      - INSTALL-ARGS-USER, INSTALL-ARGS-ROOT to override modes and owenership set during installation.
+      - DEST to override target directory for installation (to $(DEST)/sbin).
+
+
+*   Using the utilities 
+    ===================
+
+**  Generally
+    ---------
+
+    In Linux /sbin/mount calls /sbin/mount.$FSTYPE and /sbin/umount
+    calls /sbin/umount.$FSTYPE if those programs exist. This leads to
+    the observation, that the filesystem types either in /etc/fstab or
+    passed to mount with -t rather more characterize rather a mounting
+    mechanism than a file system type. 
+
+    With the LSD mount utilities this mechanism is used to delegate
+    mounting of encrypted loopback devices to mount.lcrypt which
+    automates the steps necessary to set up those devices (like:
+    modprobe, losetup, cryptsetup). 
+
+    mount.lcrypt on the other side should know the filesystem of the
+    decrypted device from a mount option. (This does not work yet,
+    presently all lcrypt devices have the decrypted filesystem type
+    ext2).
+
+
+**  Mounting directly
+    -----------------
+
+    Pass '-t lcrypt' to mount:
+
+      mount -t lcrypt /data/encrypted-image /mnt 
+
+    You'll be asked for the passphrase.
+    
+
+**  With fstab / allow user mounting
+    --------------------------------
+
+    Use lcrypt as filesystemtype. Use the option 'user', if non
+    privileged users should be able to mount the device:
+
+      /data/encrypted-image /secret-mnt lcrypt  rw,noauto,user,exec 0 0
+
