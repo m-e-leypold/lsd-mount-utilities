@@ -40,32 +40,40 @@ exception No_Error;;
 let uid         = Unix.getuid ();;
 let user        = (Unix.getpwuid uid).Unix.pw_name;;
 
-let options     = parse_mount_options mount_options
+let options     = Filesystem.Options.parse mount_options
 and loop_device = Loop.probe volume_container
 in 
-  try 
-    option_table_add options "loopdev" loop_device;
-    option_table_add options "fstype"  "ext2";
 
-    if uid != 0 then option_table_add options "user" user;
+  Filesystem.Options.remove options "luks";
+
+  try 
+    Filesystem.Options.add options "loopdev" loop_device;
+    Filesystem.Options.add options "fstype"  "ext2";
+
+    if uid != 0 then Filesystem.Options.add options "user" user;
 
     let mapper_device = path_to_dmname volume_container
     in 
 
-      option_table_add options "dmdev" mapper_device;
+      Filesystem.Options.add options "dmdev" mapper_device;
 
       try 
-	Crypto_device.create loop_device mapper_device ;
+	begin
+	  match Crypto.create loop_device mapper_device 
+	  with
+	      Crypto.LUKS  -> Filesystem.Options.set options "luks"
+	    | Crypto.Plain -> ()
+	end;
 
 	Unix.setuid (Unix.geteuid ());
 
-	Mount.attach_hidden "ext2" ("/dev/mapper/"^mapper_device) mount_options mount_point; 
+	Filesystem.mount_hidden "ext2" ("/dev/mapper/"^mapper_device) mount_options mount_point; 
 	  
 	try 
-	  Mount.add_entry "lcrypt" volume_container (option_table_to_string options) mount_point;
+	  Filesystem.Mtab.add_entry "lcrypt" volume_container (Filesystem.Options.table_to_string options) mount_point;
 
-	with x -> Mount.detach_really mount_point ; raise x
-      with x -> Crypto_device.remove mapper_device ; raise x
+	with x -> Filesystem.umount_really mount_point ; raise x
+      with x -> Crypto.Plain.remove mapper_device ; raise x
   with x -> Loop.delete loop_device ; raise x
 ;;
 

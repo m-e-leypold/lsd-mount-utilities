@@ -82,44 +82,10 @@
       - DEST to override target directory for installation (to $(DEST)/sbin).
 
 
-*   Using the utilities 
-    ===================
+**  Usage
+    -----
 
-**  Generally
-    ---------
-
-    In Linux /sbin/mount calls /sbin/mount.$FSTYPE and /sbin/umount
-    calls /sbin/umount.$FSTYPE if those programs exist. This leads to
-    the observation, that the filesystem types either in /etc/fstab or
-    passed to mount with -t rather more characterize rather a mounting
-    mechanism than a file system type. 
-
-    With the LSD mount utilities this mechanism is used to delegate
-    mounting of encrypted loopback devices to mount.lcrypt which
-    automates the steps necessary to set up those devices (like:
-    modprobe, losetup, cryptsetup). 
-
-    mount.lcrypt on the other side should know the filesystem of the
-    decrypted device from a mount option. (This does not work yet,
-    presently all lcrypt devices have the decrypted filesystem type
-    ext2).
+    See file USAGE on how to use the utilities to setup and mount encrypted filesystems.
 
 
-**  Mounting directly
-    -----------------
-
-    Pass '-t lcrypt' to mount:
-
-      mount -t lcrypt /data/encrypted-image /mnt 
-
-    You'll be asked for the passphrase.
-    
-
-**  With fstab / allow user mounting
-    --------------------------------
-
-    Use lcrypt as filesystemtype. Use the option 'user', if non
-    privileged users should be able to mount the device:
-
-      /data/encrypted-image /secret-mnt lcrypt  rw,noauto,user,exec 0 0
 

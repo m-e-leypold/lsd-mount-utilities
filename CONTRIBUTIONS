@@ -1,0 +1,38 @@
+					-*- mode: xnotes -*-
+    
+*   The rules
+    =========
+    
+    If you send patches to us, we want you to transfer the rights to
+    your contribution to us (M E Leypold <development-2006-8ecbb5cc8a
+    REMOVETHIS AT ANDTHAT m-e-leypold.de>). We need that, since we
+    want to keep open the option to relicense the code with linking
+    exceptions, under a BSD license or even for closed software, and
+    do not want to get a flock of contributors to agree to anything in
+    some months or years.
+    
+    (This is basically what the FSF does, when they require to
+     transfer the rights to source contributed to GNU projects to
+     them).
+    
+    We will ask you for some statement to that effect when you send
+    code or patches to us.
+        
+    If you cannot live with that terms, please feel free to discussion
+    your problems with us. We are not evil :-) and open to change.
+        
+    -- M E Leypold <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+        
+    
+*   Contributors
+    ============
+    
+**  M E Leypold <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+    
+    Principal author and author of the first version.
+    
+    
+**  Alexander Ulrich <ulricha@informatik.uni-tuebingen.de>
+    
+    Idea, POC and technical input for the LUKS support.
+

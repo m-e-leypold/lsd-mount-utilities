@@ -28,7 +28,7 @@
 
 default: all
 
-OCAML-PROGRAMS    := mount.lcrypt loclean umount.lcrypt
+OCAML-PROGRAMS    := $(patsubst %.ml,%, $(wildcard *.lcrypt.ml)) loclean
 OCAML-MODULES     := subprocess mountlib
 OCAML-LIBS        := unix str
 
@@ -41,6 +41,16 @@ INSTALL           := install
 DEST              := 
 INSTALL-MODE      := -m 755
 INSTALL-MODE-SUID := -m 4755 -o root -g root 
+
+# -----------------------------------------------------------------------------------
+
+fsck.lcrypt.cmx: mountlib.cmx
+loclean.cmx: mountlib.cmx
+mkfs.lcrypt.cmx: mountlib.cmx
+mount.lcrypt.cmx: mountlib.cmx
+mountlib.cmx: subprocess.cmx mountlib.cmi
+subprocess.cmx: subprocess.cmi
+umount.lcrypt.cmx: mountlib.cmx
 
 # -----------------------------------------------------------------------------------
 
@@ -73,8 +83,8 @@ all: $(OCAML-PROGRAMS)
 
 install: all
 	$(INSTALL) -d $(DEST)/sbin
-	$(INSTALL) $(INSTALL-MODE-SUID) $(filter %.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
-	$(INSTALL) $(INSTALL-MODE) $(filter-out %.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
+	$(INSTALL) $(INSTALL-MODE-SUID) $(filter %mount.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
+	$(INSTALL) $(INSTALL-MODE) $(filter-out %mount.lcrypt,$(OCAML-PROGRAMS)) $(DEST)/sbin
 
 uninstall: 
 	rm -f $(OCAML-PROGRAMS:%=$(DEST)/sbin/%)

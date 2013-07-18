@@ -1,0 +1,23 @@
+
+
+    Some roadmap for the further development of the LSD mount utilities 2007-02-20
+    ______________________________________________________________________________
+    
+    
+    (not necessarily in that order)
+    
+
+    * Suppress all the verbose output on standard error during probing.
+    
+    * Add option processing to mkfs and fsck utilities.
+    
+    * Add support for choosing cipher  and decrypted filesystem type in options and /etc/fstab.   
+    
+    * Add support for directly encrypted block devices (i.e. no loopback device).
+
+    * Replace 'subprocess.ml' by a more
+      flexible module (work is already in progress).
+    
+    * Publish 'mountlib' and 'subprocess' as reusable
+      modules for integration into other OCaml programs.
+

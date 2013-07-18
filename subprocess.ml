@@ -32,8 +32,19 @@
 exception Failed of string  (* executable path *) ;;
 exception Error  of string  (* executable path *) ;;
 
+let debugmode = ref (try (Sys.getenv "lsd_debug_subprocess")="verbose" with Not_found -> false | x -> raise x);;
+
+let debug_print program argv =
+
+  if (!debugmode) then
+
+    ( print_string "running: "; print_string program; List.iter (fun s -> print_char ' '; print_string s ) argv;
+      print_newline (); flush stdout )
+
 
 let run program_path argv =
+
+  debug_print program_path argv;
 
   let pid = 
     Unix.create_process 
@@ -47,6 +58,8 @@ let run program_path argv =
       | _                      -> raise (Error  program_path)
 
 and run_catch_stdout program_path argv =
+
+  debug_print program_path argv;
 
   let  (pipe_read, pipe_write) = Unix.pipe ()          in
   let  return_ch = Unix.in_channel_of_descr pipe_read  in

@@ -1,0 +1,209 @@
+`						-*- mode: xnotes -*-
+    
+    
+    Using the LSD mount utilities 
+    _____________________________
+
+	     (C) 2007 M E Leypold
+
+
+*   Generally
+    ---------
+
+    In Linux /sbin/mount calls /sbin/mount.$FSTYPE and /sbin/umount
+    calls /sbin/umount.$FSTYPE if those programs exist. This leads to
+    the observation, that the filesystem types either in /etc/fstab or
+    passed to mount with -t rather more characterize rather a mounting
+    mechanism than a file system type. 
+
+    With the LSD mount utilities this mechanism is used to delegate
+    mounting of encrypted loopback devices to mount.lcrypt which
+    automates the steps necessary to set up those devices (like:
+    modprobe, losetup, cryptsetup). 
+
+    mount.lcrypt on the other side should know the filesystem of the
+    decrypted device from a mount option. (This does not work yet,
+    presently all lcrypt devices have the decrypted filesystem type
+    ext2).
+
+    A similar delegation mechanism exists for mkfs and fsck. From
+    version 1.3 on the LSD mount utilities also contain a mkfs.lcrypt
+    to automate the creation of filesystems in encrypted volumes and
+    fsck.lcrypt to check filesystems in encrypted volumes.
+
+
+*   Restrictions and some more background
+    -------------------------------------
+
+**  Loopback images only
+
+    The LSD mount utilitie presently support only loopback mounted
+    filesystems -- that is, filesystems where the encrypted filesystem
+    image is stored in an ordinary file in another file
+    systems. Setting up directly encrypted block devices is not
+    supported -- yet.
+
+    Some background to understand the difference:
+
+    Before Linux kernel 2.2 encrypting block devices was somehow
+    entangled with the loop back mechnanism. The loop devices
+    (/dev/loop*) make it possible to "transform" a file into a block
+    device. With the (infamous ...) cryptoloop module it was possible
+    to add de/encryption to this transformation step.
+
+    Since version 2.4 of linux kernel, device encryption and loop back
+    devices have been seperated: The loop module now has only the
+    responsibility to transform a file into a block device, whereas
+    the more complex "device mapper" mechanism can transform block
+    devices into different block devices, specifically transform a
+    block device with an encrypted file system into a block device
+    which contains the decrypted file system and thus can be mounted.
+
+    There are now, in principle to possibilities to setup encrypted
+    file systems: The straight forward method would be to encrypt a
+    complete partion (i.e. /dev/hda3), map it to a decrypted block
+    device (i.e. /dev/mapper/hda2.cleartext) with the device mapper
+    (setting it up with the 'cryptsetup' utility).
+
+    The other method would be to use 'loop' to transform an ordinary
+    file into a block device and then decrypt that with the device
+    mapper.
+
+    By historical accident that last -- less straight forward --
+    option has been been in use at the machines the author of the LSD
+    mount utiilities uses. Thus the LSD mount utilities presently only
+    support to setup encrypted loopback file system. This will change
+    in the near future, but presently this is a restriction.
+
+
+**  Only ext2 and aes
+    
+    For very similar reasons the cleartext filesystem type is
+    presently hard coded to ext2 and the encryption to AES. Changing
+    that is not difficult, so it will happen, but it requires to unify
+    argument/option processing over all tools and also some research
+    wether it is really advisable to use, i.e. journalling filesystems
+    with device mapper and/or loop.
+    
+
+*   Creating an encrypted file system
+    ---------------------------------
+
+    Before you can make an encrypted file system you need to create an
+    image file and preferably fill it with random noise:
+
+      dd if=/dev/urandom of=/secret/image
+
+    Don't stop 'dd' during that process (i.e. by pressing ^Z to
+    background it): Some versions of seem to have a bug in the signal
+    handling code, which leads to short reads or writes in this
+    situation and means that your resulting image file will be some
+    blocks short (not absolutely catastrophic but irritating).
+
+    Given an image files a encrypted file systems can be initialised
+    with plain mkfs:
+
+      mkfs -t lcrypt /secret/image 10000
+
+    The 'blocks' number is optional (you usually can leave it
+    out). You'll be asked for the passphrase twice and 
+
+    Note that your passphrase should contain "enough entropy" to
+    generate a 256 bit key from it. 
+
+    (Aside: That means you should have enough "randomness" in your
+     passphrase as a random 256 bit string has, that is 256
+     independent yes/no decisions. A random (not upper case)
+     letter/digit on the keyboard is perhaps a choice of 1 from 32,
+     i.e. 5 bits of entropy. So you should have a pass phrase of
+     around 32 letters to really use the available key space. You
+     should perhaps double that number or use upper case letters in
+     roughly 50% of the letters to compensate for non random phrases,
+     i.e. phrases based on some sentence to memorize it.
+     
+     The consequences if you don't have a sufficiently long pass
+     phrase are, that this makes your key more predictable and your
+     encrypted data more susceptible to cryptanalysis.)
+
+    mkfs.lcrypt presently does not take any other options. Indeed if
+    you try to pass any option with 'mkfs -t lcrypt ...' or directly,
+    it will abort with an error.
+
+
+*   Checking an encrypted file system
+    ---------------------------------
+
+    An encrypted filesystem can be checked passing '-t lcrypt' to fsck.
+ 
+      fsck -t lcrypt /secret/image
+
+    You will, of course be asked for the passphrase.
+
+    If there is an entry in /etc/fstab (see the next sections) which already gives the type of
+    /secret/image as lcrypt, the '-t lcrypt' might be omitted:
+
+      fsck /secret/image
+
+    fsck.lcrypt presently does not take any other options. Indeed if
+    you try to pass any option with fsck or directly, it will abort
+    with an error.
+
+
+*   Mounting an encrypted file system
+    ----------------------------------
+
+    To mount an encrypted filesystem you can pass '-t lcrypt' to
+    mount:
+
+      mount -t lcrypt /data/encrypted-image /mnt 
+
+    You'll be asked for the passphrase.
+
+    If there is an entry in /etc/fstab (see the next sections) which
+    already gives the type of /secret/image as lcrypt, the '-t lcrypt'
+    and the mount point might be omitted.
+
+      mount /data/encrypted-image
+
+
+*   Setting up encrpyted file systems in /etc/fstab
+    -----------------------------------------------
+
+    Use lcrypt as filesystemtype. Use the option 'user', if
+    non-privileged users should be able to mount the device:
+
+      /etc/fstab:
+      |
+      ...
+      |
+      | /data/encrypted-image /secret-mnt lcrypt  rw,noauto,user,exec 0 0
+      |
+      ...
+
+    In a setup like this, access control is basically regulated by
+    knowledge of the passphrase. The user/owner of the filesystem is
+    responsible for setting appropriate permissions in the filesystem
+    root to prevent other concurrent users from looking into his
+    data. Root necessarily must be trusted (but this is a general
+    problem with the usual Unix setup -- using encryption makes only
+    sense if you're protecting against group outsiders or you've to
+    use the machine only for yourself and be the only one who has root
+    privileges).
+   
+
+*   Loclean: Clean up loopback devices
+    ----------------------------------
+
+    During the LSD utilities development, we've found it useful to
+    have a tool which deletes all loopback associations that are not
+    in use at the moment. This should not be necessary with the LSD
+    utilities which deallocate loop devices when they are done, but it
+    might happen when experimenting with the source or other tools
+    might neglect clean up. Loclean can only be used by root:
+
+      loclean
+
+    and will try to remove all associations with files from loopback
+    devices (/dev/loop*) that are not currently in use.
+
+

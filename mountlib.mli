@@ -29,6 +29,10 @@
 *)
 
 
+val path_to_dmname : string -> string
+
+
+
 module Loop: sig
 
   val delete : loop_device:string -> unit
@@ -41,45 +45,71 @@ module Loop: sig
   exception Unbinding_failed of string  (* device path     *)
 end
 
-val path_to_dmname : string -> string
+
+module Filesystem: sig
+
+  val mount             : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
+  val mount_hidden      : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
+  val umount            : mount_point:string -> unit
+  val umount_really     : mount_point:string -> unit
+  val mkfs              : ?blocksize:int     -> device:string -> unit
+  val fsck              : device:string      -> unit
+
+  module Options: sig
+    type ('key, 'value) table = ('key, 'value option) Hashtbl.t
+	
+    val add    : ('key, 'value option) Hashtbl.t -> 'key -> 'value -> unit
+    val get    : ('key, 'value option) Hashtbl.t -> 'key -> 'value
+
+    val set    : ('key, 'value option) Hashtbl.t -> 'key -> unit
+    val is_set : ('key, 'value option) Hashtbl.t -> 'key -> bool
+
+    val has_key : ('key, 'value option) Hashtbl.t -> 'key -> bool
+    val remove  : ('key, 'value option) Hashtbl.t -> 'key -> unit
+
+    val table_to_string : (string, string option) Hashtbl.t -> string
+    val parse           : string -> (string, string option) Hashtbl.t
+  end
 
 
+  module Mtab: sig
 
-module Mount: sig
-  val attach            : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
-  val attach_hidden     : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
-  val add_entry         : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
-  val detach            : mount_point:string -> unit
-  val detach_really     : mount_point:string -> unit
+    exception Format_error
+
+    val add_entry       : fstype:string      -> device:string -> options:string -> mount_point:string -> unit
+
+    type ('mount_point_t, 'fstype_t, 'options_t) entry = {
+      mount_point    : 'mount_point_t ;
+      mount_type     : 'fstype_t      ;
+      mount_options  : 'options_t     ;
+      device         : 'mount_point_t option;
+    }
+
+    val get       : unit -> (string, string, string) entry list
+    val get_entry :
+      string -> (string, string, (string, string option) Hashtbl.t) entry
+
+  end
 end
 
 
 
-exception Mtab_format_error
-type fs_type = string
-type fs_options = string
-type ('a, 'b, 'c) mount_spec = {
-  mount_point : 'a;
-  mount_type : 'b;
-  mount_options : 'c;
-  device : 'a option;
-}
+module Crypto: sig
 
+  module Plain: sig
+    val create_verify_pp : encrypted_device:string  -> decrypted_device:string -> unit
+    val create           : encrypted_device:string  -> decrypted_device:string -> unit
+    val remove           : decrypted_device:string  -> unit
+  end
 
-val parse_mtab_line : string list -> (string, string, string) mount_spec
-type 'a option_table = ('a, string option) Hashtbl.t
-val option_table_add : ('a, 'b option) Hashtbl.t -> 'a -> 'b -> unit
-val option_table_get : ('a, 'b option) Hashtbl.t -> 'a -> 'b
-val option_table_set : ('a, 'b option) Hashtbl.t -> 'a -> unit
-val option_table_to_string : (string, string option) Hashtbl.t -> string
-val parse_mount_options : string -> (string, string option) Hashtbl.t
-val mtab_line_to_entry : string -> (string, string, string) mount_spec
-val get_mtab : unit -> (string, string, string) mount_spec list
-val get_mtab_entry :
-  string -> (string, string, (string, string option) Hashtbl.t) mount_spec
+  module LUKS: sig
+    val is_valid  : encrypted_device:string  -> bool
+    val create    : encrypted_device:string  -> decrypted_device:string -> unit
+    val remove    : decrypted_device:string  -> unit
+  end
 
+  type setuptype = Plain | LUKS
 
-module Crypto_device : sig
-  val create : encrypted_device:string  -> decrypted_device:string -> unit
-  val remove : decrypted_device:string  -> unit
+  val create    : encrypted_device:string  -> decrypted_device:string -> setuptype
+  val remove    : decrypted_device:string  -> setuptype:setuptype -> unit
 end

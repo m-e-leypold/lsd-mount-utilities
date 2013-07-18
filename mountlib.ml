@@ -33,7 +33,10 @@
 (* ------------------------------------------------------ *)
 
 let path_to_dmname p =
-  ".LSD.lcrypt." ^ (Str.global_replace  (Str.regexp "//*") "#" p)
+  ".LSD.lcrypt." ^ 
+    (Str.global_replace  (Str.regexp "//*") "#" 
+       (Str.global_replace  (Str.regexp "/*$") "" 
+	  p))
 ;;
 
 
@@ -119,176 +122,197 @@ end
 
 (* ------------------------------------------------------ *)
 
-module Mount = struct
+module Filesystem = struct
 
-  let attach ~fstype ~device ~options ~mount_point =
+  let mount ~fstype ~device ~options ~mount_point =
     Subprocess.run "/bin/mount" [ "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
 
-  let attach_hidden ~fstype ~device ~options ~mount_point =
+  let mount_hidden ~fstype ~device ~options ~mount_point =
     Subprocess.run "/bin/mount" [ "-n" ; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
 
-  let detach ~mount_point =
+  let umount ~mount_point =
     Subprocess.run "/bin/umount" [ mount_point ]
 
-  let detach_really ~mount_point =
+  let umount_really ~mount_point =
     Subprocess.run "/bin/umount" [ "-i" ; mount_point ]
+
+  let mkfs ?blocksize ~device =
+    Subprocess.run "/sbin/mkfs"  
+      ([ "-t" ; "ext2" ; device ] @ (match blocksize with None -> [] | Some x -> [string_of_int x]))
       
-  let add_entry ~fstype ~device ~options ~mount_point =
-    Subprocess.run "/bin/mount" [ "-i" ; "-f"; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+  let fsck ~device =
+    Subprocess.run "/sbin/fsck"   [ "-t" ; "ext2" ; device ]
 
-  module Compat = struct
 
-    let mount           = attach
-    let mount_n         = attach_hidden
-    let mount_fi        = add_entry
-    let umount          = detach
-    let umount_n        = detach_really
+  module Options = struct
+
+    type ('key,'value) table = ('key, 'value option) Hashtbl.t
+
+    let has_key table key = Hashtbl.mem table key
+
+    let rec remove table key = if has_key table key then (Hashtbl.remove table key; remove table key) else ()      
+	
+    let add table key value =
+      Hashtbl.add table key (Some value)
+	
+    let get table key =
+      match Hashtbl.find table key with
+	  None   -> raise Not_found
+	| Some x -> x
+	    
+    let set table key = remove table key; Hashtbl.add table key None
+
+    let is_set table key = 
+      try
+	match Hashtbl.find table key with
+	    None   -> true
+	  | Some x -> false
+      with Not_found -> false | x -> raise x
+
+	
+    (* option_table_maybe_get *)
+    (* let option_table_get tbl ... -> string option *)
+    (* option_table_test *)
+    (* mount_options_get, mount_options_test <- test/get on entry *)      
+	
+    let table_to_string table =
+      
+      let append_option_string s o     = if String.length s = 0 then o else s ^ "," ^ o 
+      and option_to_string key value   = match value with None -> key | Some x -> key ^ "=" ^ x  
+      in
+      let add_option key value s       = append_option_string s (option_to_string key value)
+      in    
+	Hashtbl.fold add_option table ""
+	  
+    let parse option_string =
+      
+      let table = Hashtbl.create 10   in
+      let add   = Hashtbl.add    table
+	
+      in
+	
+      let l = (Str.split (Str.regexp "[,]+") option_string)
+      in 
+      let rec loop = function 
+	
+	  h::t -> 
+	    
+	    ( let l = String.length h in 		   
+		try  let i = String.index h '=' in add (String.sub h 0 i) (Some (String.sub h (i+1) (l-i-1)))
+		with Not_found -> add h None
+	    );
+	    loop t
+	      
+	| []   -> table
+	    	    
+      in loop l	   
+  end
+	   
+  module Mtab = struct
+
+    exception Format_error
+
+    let add_entry ~fstype ~device ~options ~mount_point =
+      Subprocess.run "/bin/mount" [ "-i" ; "-f"; "-t" ; fstype ; device ; "-o" ; options ; mount_point ]
+
+
+    type ('mount_point_t, 'fstype_t, 'options_t) entry = {	
+      mount_point    : 'mount_point_t ;
+      mount_type     : 'fstype_t      ;
+      mount_options  : 'options_t     ;
+      device         : 'mount_point_t option;
+    }
+
+    let parse_line l =
+
+      let drop_parens s =	
+	let  l = String.length s  in
+	  if String.get s 0     != '(' then raise Format_error;
+	  if String.get s (l-1) != ')' then raise Format_error;	  
+	  try
+	    (String.sub s 1 (l-2))
+	  with _ -> raise Format_error	
+      in	
+	( match l with 	      
+	      dev :: "on" :: dir :: "type" :: fstype :: options :: []  when (String.get dev 0) = '/' -> 
+		{ mount_point = dir; mount_type = fstype; mount_options = (drop_parens options); device = Some dev ; } 
+	      
+	    | dev :: "on" :: dir :: "type" :: fstype :: options :: [] ->
+		{ mount_point = dir; mount_type = fstype; mount_options = (drop_parens options); device = None ; }
+	    | _                -> raise Format_error
+	)
+
+    let line_to_entry l =
+      parse_line (Str.split (Str.regexp "[ \t]+") l)
+
+    let get () =
+      List.map line_to_entry (Subprocess.run_catch_stdout "/bin/mount" [])
+
+    let get_mtab = get (* for internal use *)
+
+    let get_entry dir =   
+      let rec search_in l =    
+	match l with
+	    []                           -> raise Not_found
+	  | h::_  when h.mount_point=dir -> h
+	  | _ ::t                        -> search_in t
+      in
+      let e = search_in (get_mtab ())
+      in  {e with mount_options = (Options.parse e.mount_options)}
   end
 end;;
 
 
-exception Mtab_format_error;;
-
-type fs_type      =  string;;
-type fs_options   =  string;;
-
-type ('path_t,'fs_t,'opt_t) mount_spec   =  
-
-    { mount_point : 'path_t ; mount_type : 'fs_t ; mount_options : 'opt_t ; device : 'path_t option };;
-
-
-let parse_mtab_line l =
-
-  let drop_parens s =
-
-    let  l = String.length s  in
-      if String.get s 0     != '(' then raise Mtab_format_error;
-      if String.get s (l-1) != ')' then raise Mtab_format_error;
-
-      try
-	(String.sub s 1 (l-2))
-      with _ -> raise Mtab_format_error	
-  in
-  
-    ( match l with 
-  
-	  dev :: "on" :: dir :: "type" :: fstype :: options :: []  when (String.get dev 0) = '/' -> 
-	    { mount_point = dir; mount_type = fstype; mount_options = (drop_parens options); device = Some dev ; } 
-	      
-	| dev :: "on" :: dir :: "type" :: fstype :: options :: [] ->
-	    { mount_point = dir; mount_type = fstype; mount_options = (drop_parens options); device = None ; }
-	| _                -> raise Mtab_format_error
-    )
-;;
-
-
-
-type 'option_key option_table = ('option_key, string option) Hashtbl.t ;;
-
-let option_table_add table key value =
-  Hashtbl.add table key (Some value)
-;;
-
-
-let option_table_get table key =
-  match Hashtbl.find table key with
-      None   -> raise Not_found
-    | Some x -> x
-;;
-
-
-let option_table_set table key =
-  Hashtbl.add table key None
-;;
-
-
-let option_table_to_string table =
-
-  let append_option_string s o     = if String.length s = 0 then o else s ^ "," ^ o 
-  and option_to_string key value   = match value with None -> key | Some x -> key ^ "=" ^ x  
-  in
-  let add_option key value s       = append_option_string s (option_to_string key value)
-  in    
-    Hashtbl.fold add_option table ""
-;;
-
-
-
-let parse_mount_options option_string =
-
-  let table = Hashtbl.create 10   in
-  let add   = Hashtbl.add    table
-
-  in
-
-  let l = (Str.split (Str.regexp "[,]+") option_string)
-  in 
-  let rec loop = function 
-      
-      h::t -> 
-	
-	( let l = String.length h in 		   
-	    try  let i = String.index h '=' in add (String.sub h 0 i) (Some (String.sub h (i+1) (l-i-1)))
-	    with Not_found -> add h None
-	);
-	loop t
-	  
-    | []   -> table
-	
-	
-  in loop l
-;;
-
-let mtab_line_to_entry l =
-  parse_mtab_line (Str.split (Str.regexp "[ \t]+") l)
-;;
-
-let get_mtab () =
-  List.map mtab_line_to_entry (Subprocess.run_catch_stdout "/bin/mount" [])
-;;
-
-
-let get_mtab_entry dir = 
-  
-  let rec loop l =
-    
-    match l with
-	[]                           -> raise Not_found
-      | h::_  when h.mount_point=dir -> h
-      | _ ::t                        -> loop t
-  in
-  let e = loop (get_mtab ())
-  in  {e with mount_options = (parse_mount_options e.mount_options)}
-;;
-
-
-(* option_table_maybe_get *)
-(* let option_table_get tbl ... -> string option *)
-(* option_table_test *)
-(* mount_options_get, mount_options_test <- test/get on entry *)
-
-
-
-
 
 (* ------------------------------------------------------ *)
 
 
-module Crypto_device = struct
+module Crypto = struct
+
+  module Plain = struct
+    
+    let create ~encrypted_device ~decrypted_device =
+      Subprocess.run "/sbin/cryptsetup" [ "create" ; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
+	
+    (* note: failure here might be due to too short container file *)
+
+    let create_verify_pp ~encrypted_device ~decrypted_device =
+      Subprocess.run "/sbin/cryptsetup" [ "create" ; "-y"; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
+	
+    let remove ~decrypted_device =
+      Subprocess.run "/sbin/cryptsetup" [ "remove" ; decrypted_device ]
+  end
+    
+  module LUKS = struct
+    
+    let is_valid ~encrypted_device =
+      try
+	Subprocess.run "/sbin/cryptsetup" ["isLuks" ; encrypted_device] ;
+	true
+      with
+	  (* either this is no luks device or we don't have cryptsetup-luks *)
+	| Subprocess.Failed _ -> false
+	| x -> raise x
+
+    let create ~encrypted_device ~decrypted_device =
+      Subprocess.run "/sbin/cryptsetup" [ "luksOpen" ; encrypted_device ; decrypted_device ]
+	
+    let remove ~decrypted_device =
+      Subprocess.run "/sbin/cryptsetup" [ "luksClose" ; decrypted_device ]
+  end
+
+  type setuptype = Plain | LUKS
 
   let create ~encrypted_device ~decrypted_device =
-    Subprocess.run "/sbin/cryptsetup" [ "create" ; "-c" ; "aes" ; decrypted_device ; encrypted_device ]
+    
+    if LUKS.is_valid ~encrypted_device 
+    then ((LUKS.create encrypted_device decrypted_device);  LUKS  )
+    else ((Plain.create encrypted_device decrypted_device); Plain )
 
-  (* note: failure here might be due to too short container file *)
-
-  let remove ~decrypted_device =
-    Subprocess.run "/sbin/cryptsetup" [ "remove" ; decrypted_device ]
+  let remove ~decrypted_device ~setuptype =
+    match setuptype with
+	LUKS  -> LUKS.remove decrypted_device
+      | Plain -> Plain.remove decrypted_device
 end
 ;;
-
-
-(* ------------------------------------------------------ *)
-
-
-
-
+  

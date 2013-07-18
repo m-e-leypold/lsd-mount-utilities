@@ -32,6 +32,8 @@
 exception Failed of string
 exception Error  of string
 
-val run : string -> string list -> unit
+
+val debugmode        : bool ref
+val run              : string -> string list -> unit
 
 val run_catch_stdout : string -> string list -> string list

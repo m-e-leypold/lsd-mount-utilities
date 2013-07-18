@@ -1,5 +1,77 @@
 
+
+Changes 1.2.1 - 1.3
+-------------------
+
+	* LUKS support has been tested (by Alexander Ulrich) and does not seem to fail.
+
+	* Added basic vesions of mkfs and fsck.
 	
+
+2007-02-14  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* subprocess.ml: Added debugging instrumentation (controlled with
+	  lsd_debug_subprocess=verbose).
+	
+	* fsck.lcrypt.ml: Basic option processing has been added (actually
+	  only the container file name is read from the command line,
+	  fsck.lcrypt bails out if any othe options are passed.
+
+	* mkfs.lcrypt.m, mountlib.ml: Added argument processing to
+	  mkfs. Any flags passed to/by the wrapper are presently
+	  dropped. Ther is no way to have other filesystems but ext2 at
+	  the moment.
+
+
+2007-02-04  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* mkfs.lcrypt.ml, fsck.lcrypt.ml: Basic scaffolding for mkfs and
+	  fsck functionality. Still need to implement proper command line
+	  argument processing and passing arguments through to the sub
+	  processes.
+	
+
+Changes 1.2 - 1.2.1
+-------------------
+
+	* Continued to restructure mountlib.ml. I think that's it basically (minor changes might still
+	  occur).
+
+	* Integrated preliminary LUKS support.
+
+	* Version numbering has been changed: x.y.z: y => major change in
+	  functionality, y => incremental changes, z => patches and
+	  development releases.
+		
+Details
+-------	
+
+
+2007-02-04  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* subprocess.ml: Some debugging code (print subprocess run). This
+	  will be removed again in 1.3 and later.
+
+2007-02-04  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* mount.lcrypt.ml, mountlib.ml, mountlib.mli, umount.lcrypt.ml:
+	  Gratitious renaming and reorganization in hierarchilly organized
+	  modules for (hopefully) easier reuse later on.	
+	  
+	* umount.lcrypt.ml, mount.lcrypt.ml: Preliminary Integration of
+  	  support for LUKS. UNTESTED.
+
+	  Errors during probing etc. still go to stdout. This will have to
+	  change.
+	
+
+2007-02-03  M E Leypold  <development-2006-8ecbb5cc8aREMOVETHIS@ANDTHATm-e-leypold.de>
+
+	* mountlib.mli: Added LUKS support (to lib only).
+
+	-----------------------------------------------------------------------------------------
+	
+
 Changes 1.1 - 1.2
 -----------------
 

@@ -10,10 +10,11 @@
 *   About 
     ====
 
-    The LSD mount utilities allow to automate mounting of encrypted
-    filesystems with cryptsetup and loopback devices and to enable
-    users (not only root) to mount encrypted filesystems by adding
-    entries to /etc/fstab.
+    The LSD mount utilities assist in setting up (creating) and
+    mounting of encrypted loopback filesystems in Linux 2.4 and 2.6.
+
+    They also enable users (not only root) to mount encrypted
+    filesystems if appropriate entries have been added to /etc/fstab.
 
     The LSD mount utilities are licensed/distributed under the the
     terms of the GPL Version 2 (no later version). We'll usually be
@@ -56,19 +57,19 @@
     automates the steps necessary to set up those devices (like:
     modprobe, losetup, cryptsetup). 
 
-    mount.lcrypt on the other side should know the filesystem of the
-    decrypted device from a mount option. (This does not work yet,
-    presently all lcrypt devices have the decrypted filesystem type
-    ext2).
-
     Detailed instructions on how to mount as root or how to setup an
-    entry in /etc/fstab is give in INSTALL.
+    entry in /etc/fstab is give in the file USAGE.
 
 
 *   Restriction
     ===========
 
-    There is no mkfs.lcrypt or fsck.lcrypt yet. This will come soon.
+    Presently the filesystem type ext2 (of the decrypted filesystem) and the cipher AES are
+    hardcoded into the utility. This will change in future.
+
+    A lot of noise is generated on standard error during some of the
+    operations (specifically those probing anything). This will also
+    change in future.
     
     
 *   Installation
@@ -77,8 +78,13 @@
     See the file INSTALL.
 
 
-*   How to get help
-    ===============
+*   How to get more information and help
+    ====================================
+
+    Information on recent development and plans and updated
+    documentation will be posted at
+
+      http://www.etc-network.de/blog/mel/projects/lsd-mount-utilities
 
     If you need help, have questions concerning the LSD mount
     utilities or have suggestions for further implementation you can
@@ -87,6 +93,12 @@
        development-2006-8ecbb5cc8a-REMOVE-THIS@AND-THAT-m-e-leypold.de.
 
     I don't guarantee support, but will usually do my best to help.
+
+
+*   Authors
+    =======
+    
+    See file CONTRIBUTIONS.
 
     
 *   Haftungsausschluﬂ (2)
